@@ -98,7 +98,7 @@ type serializedAuth struct {
 }
 
 // StringReflectSpec Determine if the string Status item reflects the Spec item if not empty, otherwise take the default value.
-func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, specItem *string, statusItem *string, defaultVal string) string {
+func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, specItem *string, statusItem *string, defaultVal string) string {
 	// Update statusItem if needed
 	if *statusItem == "" || !reflect.DeepEqual(*specItem, *statusItem) {
 		// If data is specified in the spec it should be used
@@ -114,7 +114,7 @@ func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostM
 }
 
 // ReflectSpec Determine if the Status item reflects the Spec item if not empty, otherwise set a default value if applicable.
-func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, costInput *CostManagementInput) error {
+func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, costInput *CostManagementInput) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("costmanagement", "ReflectSpec")
 	costInput.IngressURL = StringReflectSpec(r, cost, &cost.Spec.IngressURL, &cost.Status.IngressURL, costmgmtv1alpha1.DefaultIngressURL)
@@ -166,7 +166,7 @@ func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagem
 }
 
 // GetClusterID Collects the cluster identifier from the Cluster Version custom resource object
-func GetClusterID(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, costInput *CostManagementInput) error {
+func GetClusterID(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, costInput *CostManagementInput) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("costmanagement", "GetClusterID")
 	// Get current ClusterVersion
@@ -380,11 +380,11 @@ func Upload(r *CostManagementReconciler, costInput *CostManagementInput, method 
 	return uploadStatus, uploadTime.Format("2006-01-02 15:04:05"), err
 }
 
-// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagements,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagements/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagementnews,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagementnews/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=config.openshift.io,resources=proxies;networks,verbs=get;list
 // +kubebuilder:rbac:groups=config.openshift.io,resources=clusterversions,verbs=get;list;watch
-// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list
+// +kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews;tokenreviews,verbs=create
 // +kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets;serviceaccounts,verbs=list;watch
@@ -396,7 +396,7 @@ func (r *CostManagementReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	log := r.Log.WithValues("costmanagement", req.NamespacedName)
 
 	// Fetch the CostManagement instance
-	cost := &costmgmtv1alpha1.CostManagement{}
+	cost := &costmgmtv1alpha1.CostManagementNEW{}
 	err := r.Get(ctx, req.NamespacedName, cost)
 
 	if err != nil {
@@ -579,6 +579,6 @@ func (r *CostManagementReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 // SetupWithManager Setup reconciliation with manager object
 func (r *CostManagementReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&costmgmtv1alpha1.CostManagement{}).
+		For(&costmgmtv1alpha1.CostManagementNEW{}).
 		Complete(r)
 }

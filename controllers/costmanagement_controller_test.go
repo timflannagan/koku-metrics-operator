@@ -56,7 +56,7 @@ var _ = Describe("CostmanagementController", func() {
 		Context("Process CRD resource", func() {
 			It("should provide defaults for empty CRD case", func() {
 
-				instance := costmgmtv1alpha1.CostManagement{
+				instance := costmgmtv1alpha1.CostManagementNEW{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      namePrefix + "empty",
 						Namespace: namespace,
@@ -66,7 +66,7 @@ var _ = Describe("CostmanagementController", func() {
 				Expect(k8sClient.Create(ctx, &instance)).Should(Succeed())
 				time.Sleep(time.Second * 10)
 
-				fetched := &costmgmtv1alpha1.CostManagement{}
+				fetched := &costmgmtv1alpha1.CostManagementNEW{}
 
 				// check the CRD was created ok
 				Eventually(func() bool {
@@ -82,7 +82,7 @@ var _ = Describe("CostmanagementController", func() {
 		})
 		It("should find basic auth token for good basic auth CRD case", func() {
 
-			instance := costmgmtv1alpha1.CostManagement{
+			instance := costmgmtv1alpha1.CostManagementNEW{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      namePrefix + "basic",
 					Namespace: namespace,
@@ -98,7 +98,7 @@ var _ = Describe("CostmanagementController", func() {
 			Expect(k8sClient.Create(ctx, &instance)).Should(Succeed())
 			time.Sleep(time.Second * 10)
 
-			fetched := &costmgmtv1alpha1.CostManagement{}
+			fetched := &costmgmtv1alpha1.CostManagementNEW{}
 
 			// check the CRD was created ok
 			Eventually(func() bool {
@@ -114,7 +114,7 @@ var _ = Describe("CostmanagementController", func() {
 		})
 		It("should fail for missing basic auth token for bad basic auth CRD case", func() {
 			badAuth := "bad-auth"
-			instance := costmgmtv1alpha1.CostManagement{
+			instance := costmgmtv1alpha1.CostManagementNEW{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      namePrefix + "basicbad",
 					Namespace: namespace,
@@ -130,7 +130,7 @@ var _ = Describe("CostmanagementController", func() {
 			Expect(k8sClient.Create(ctx, &instance)).Should(Succeed())
 			time.Sleep(time.Second * 10)
 
-			fetched := &costmgmtv1alpha1.CostManagement{}
+			fetched := &costmgmtv1alpha1.CostManagementNEW{}
 
 			// check the CRD was created ok
 			Eventually(func() bool {
@@ -146,7 +146,7 @@ var _ = Describe("CostmanagementController", func() {
 		})
 		It("should reflect source name in status for source info CRD case", func() {
 
-			instance := costmgmtv1alpha1.CostManagement{
+			instance := costmgmtv1alpha1.CostManagementNEW{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      namePrefix + "sourceinfo",
 					Namespace: namespace,
@@ -161,7 +161,7 @@ var _ = Describe("CostmanagementController", func() {
 			Expect(k8sClient.Create(ctx, &instance)).Should(Succeed())
 			time.Sleep(time.Second * 10)
 
-			fetched := &costmgmtv1alpha1.CostManagement{}
+			fetched := &costmgmtv1alpha1.CostManagementNEW{}
 
 			// check the CRD was created ok
 			Eventually(func() bool {

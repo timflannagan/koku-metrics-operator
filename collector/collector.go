@@ -112,7 +112,7 @@ func sumSlice(array []model.SamplePair) float64 {
 
 func getValue(query string, array []model.SamplePair) float64 {
 	switch {
-	case strings.Contains(query, "usage"):
+	case strings.Contains(query, "usage"), strings.Contains(query, "limit"), strings.Contains(query, "request"):
 		return sumSlice(array)
 	default:
 		return maxSlice(array)
@@ -133,6 +133,10 @@ func iterateMatrix(matrix model.Matrix, labelName model.LabelName, results mappe
 		if strings.HasSuffix(qname, "-cores") || strings.HasSuffix(qname, "-bytes") {
 			index := qname[:len(qname)-1] + "-seconds"
 			results[obj][index] = floatToString(value * float64(len(stream.Values)))
+		}
+		if strings.Contains(qname, "capacity") {
+			index := qname[:len(qname)-1] + "-seconds"
+			results[obj][index] = floatToString(value * 60 * float64(len(stream.Values)))
 		}
 	}
 	return results
@@ -232,9 +236,9 @@ func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) erro
 				return fmt.Errorf("node %s not found", node)
 			}
 			val["node-capacity-cpu-cores"] = dict["node-capacity-cpu-cores"]
-			val["node-capacity-cpu-cores-seconds"] = dict["node-capacity-cpu-core-seconds"]
+			val["node-capacity-cpu-core-seconds"] = dict["node-capacity-cpu-core-seconds"]
 			val["node-capacity-memory-bytes"] = dict["node-capacity-memory-bytes"]
-			val["node-capacity-memory-bytes-seconds"] = dict["node-capacity-memory-byte-seconds"]
+			val["node-capacity-memory-byte-seconds"] = dict["node-capacity-memory-byte-seconds"]
 			val["resource_id"] = dict["resource_id"]
 		}
 

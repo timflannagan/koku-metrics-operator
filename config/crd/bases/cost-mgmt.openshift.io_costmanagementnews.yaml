@@ -6,14 +6,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: costmanagements.cost-mgmt.openshift.io
+  name: costmanagementnews.cost-mgmt.openshift.io
 spec:
   group: cost-mgmt.openshift.io
   names:
-    kind: CostManagement
-    listKind: CostManagementList
-    plural: costmanagements
-    singular: costmanagement
+    kind: CostManagementNEW
+    listKind: CostManagementNEWList
+    plural: costmanagementnews
+    singular: costmanagementnew
   scope: Namespaced
   subresources:
     status: {}

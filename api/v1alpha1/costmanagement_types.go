@@ -198,7 +198,7 @@ type CostManagementStatus struct {
 // +kubebuilder:subresource:status
 
 // CostManagement is the Schema for the costmanagements API
-type CostManagement struct {
+type CostManagementNEW struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -209,12 +209,12 @@ type CostManagement struct {
 // +kubebuilder:object:root=true
 
 // CostManagementList contains a list of CostManagement
-type CostManagementList struct {
+type CostManagementNEWList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []CostManagement `json:"items"`
+	Items           []CostManagementNEW `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&CostManagement{}, &CostManagementList{})
+	SchemeBuilder.Register(&CostManagementNEW{}, &CostManagementNEWList{})
 }

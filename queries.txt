@@ -1,0 +1,65 @@
+# metrics importers
+- name: node-allocatable-cpu-cores
+        kube_node_status_allocatable_cpu_cores * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)
+- name: node-allocatable-memory-bytes
+        kube_node_status_allocatable_memory_bytes * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)
+- name: node-capacity-cpu-cores
+        kube_node_status_capacity_cpu_cores * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)
+- name: node-capacity-memory-bytes
+        kube_node_status_capacity_memory_bytes * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)
+- name: persistentvolumeclaim-capacity-bytes
+        kubelet_volume_stats_capacity_bytes
+- name: persistentvolumeclaim-phase
+        kube_persistentvolumeclaim_status_phase
+- name: persistentvolumeclaim-request-bytes
+        max(kube_persistentvolumeclaim_resource_requests_storage_bytes) by (namespace, persistentvolumeclaim) + on (namespace, persistentvolumeclaim) group_left(storageclass, volumename) sum(kube_persistentvolumeclaim_info{volumename!=""}) by (namespace, persistentvolumeclaim, storageclass, volumename) * 0
+- name: persistentvolumeclaim-usage-bytes
+        kubelet_volume_stats_used_bytes
+- name: pod-limit-cpu-cores
+        sum(kube_pod_container_resource_limits_cpu_cores) by (pod, namespace, node)
+- name: pod-limit-memory-bytes
+        sum(kube_pod_container_resource_limits_memory_bytes) by (pod, namespace, node)
+- name: pod-persistentvolumeclaim-request-info
+        kube_pod_spec_volumes_persistentvolumeclaims_info
+- name: pod-request-cpu-cores
+        sum(kube_pod_container_resource_requests_cpu_cores) by (pod, namespace, node)
+- name: pod-request-memory-bytes
+        sum(kube_pod_container_resource_requests_memory_bytes) by (pod, namespace, node)
+
+# postKube_1_14:
+- name: pod-usage-cpu-cores
+        sum(rate(container_cpu_usage_seconds_total{container!="POD",container!="",pod!=""}[5m])) BY (pod, namespace, node)
+- name: pod-usage-memory-bytes
+        sum(container_memory_usage_bytes{container!="POD", container!="",pod!=""}) by (pod, namespace, node)
+
+# preKube_1_14:
+- name: pod-usage-cpu-cores
+        label_replace(sum(rate(container_cpu_usage_seconds_total{container_name!="POD",container_name!="",pod_name!=""}[5m])) BY (pod_name, namespace, node), "pod", "$1", "pod_name", "(.*)")
+- name: pod-usage-memory-bytes
+        label_replace(sum(container_memory_usage_bytes{container_name!="POD", container_name!="",pod_name!=""}) by (pod_name, namespace, node), "pod", "$1", "pod_name", "(.*)")
+
+# korekuta queries:
+- name: cm-kube-node-labels
+        kube_node_labels
+- name: cm-kube-persistentvolume-labels
+        kube_persistentvolume_labels
+- name: cm-kube-persistentvolumeclaim-labels
+        kube_persistentvolumeclaim_labels
+- name: cm-kube-pod-labels
+        kube_pod_labels
+- name: cm-kube-pod-persistentvolumeclaim-info
+        kube_pod_spec_volumes_persistentvolumeclaims_info
+
+
+Notes:
+
+To get the resource_id out of `provider_id` in the node queries, this is the presto magic:
+
+WHEN split_part(element_at(labels, 'provider_id'), ':///', 1) = 'aws'
+  THEN split_part(split_part(element_at(labels, 'provider_id'), ':///', 2), '/', 2)
+WHEN split_part(element_at(labels, 'provider_id'), ':///', 1) = 'azure'
+  THEN split_part(split_part(element_at(labels, 'provider_id'), ':///', 2), '/', 8)
+ELSE split_part(split_part(element_at(labels, 'provider_id'), ':///', 2), '/', 2)
+
+Value: &{ID:service-ca-7c89b6dd78-79zsr QueryName:pod-request-memory-bytes Labels:map[namespace:openshift-service-ca node:ip-10-0-219-114.us-east-2.compute.internal pod:service-ca-7c89b6dd78-79zsr] Amount:1.2582912e+08 StepSize:1h0m0s Timestamp:2020-10-01 16:00:00 +0000 UTC Dt:}
+RESULT: map[namespace:openshift-service-ca node:ip-10-0-219-114.us-east-2.compute.internal pod:service-ca-7c89b6dd78-79zsr pod-request-cpu-cores:0.01 pod-request-cpu-cores-seconds:36 pod-request-memory-bytes:125829120 pod-request-memory-bytes-seconds:452984832000 pod-usage-cpu-cores:0.002720426344065673 pod-usage-cpu-cores-seconds:9.793534838636422 pod-usage-memory-bytes:139694080 pod-usage-memory-bytes-seconds:502898688000]
