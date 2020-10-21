@@ -171,11 +171,6 @@ spec:
             prometheus:
               description: Prometheus represents the status of premetheus queries
               properties:
-<<<<<<< HEAD:config/crd/bases/cost-mgmt.openshift.io_costmanagementnews.yaml
-                last_query_start_time:
-                  description: LastQueryStartTime is a field of CostManagementStatus
-                    to represent the last time queries were started
-=======
                 configuration_error:
                   description: ConfigError is a field of CostManagementStatus to represent
                     errors during prometheus configuration.
@@ -183,22 +178,11 @@ spec:
                 last_query_start_time:
                   description: LastQueryStartTime is a field of CostManagementStatus
                     to represent the last time queries were started.
->>>>>>> master:config/crd/bases/cost-mgmt.openshift.io_costmanagements.yaml
                   format: date-time
                   nullable: true
                   type: string
                 last_query_success_time:
                   description: LastQuerySuccessTime is a field of CostManagementStatus
-<<<<<<< HEAD:config/crd/bases/cost-mgmt.openshift.io_costmanagementnews.yaml
-                    to represent the last time queries were successful
-                  format: date-time
-                  nullable: true
-                  type: string
-                prometheus_connected:
-                  description: PrometheusConnected is a field of CostManagementStatus
-                    to represent if cost-management is connected to prometheus
-                  type: boolean
-=======
                     to represent the last time queries were successful.
                   format: date-time
                   nullable: true
@@ -251,7 +235,6 @@ spec:
               - data_collection_message
               - last_hour_queried
               - report_month
->>>>>>> master:config/crd/bases/cost-mgmt.openshift.io_costmanagements.yaml
               type: object
             source:
               description: Source is a field of CostManagement to represent the observed
