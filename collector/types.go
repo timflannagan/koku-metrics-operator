@@ -1,3 +1,22 @@
+/*
+
+
+Copyright 2020 Red Hat, Inc.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 package collector
 
 import (
@@ -35,7 +54,7 @@ type CSVStruct interface {
 
 type NamespaceRow struct {
 	*DateTimes
-	Namespace       string
+	Namespace       string `json:"namespace"`
 	NamespaceLabels string `json:"namespace_labels"`
 }
 
@@ -86,7 +105,7 @@ func (row NamespaceRow) String() string {
 
 type NodeRow struct {
 	*DateTimes
-	Node                          string
+	Node                          string `json:"node"`
 	NodeCapacityCPUCores          string `json:"node-capacity-cpu-cores"`
 	ModeCapacityCPUCoreSeconds    string `json:"node-capacity-cpu-core-seconds"`
 	NodeCapacityMemoryBytes       string `json:"node-capacity-memory-bytes"`
@@ -152,21 +171,16 @@ func (row NodeRow) String() string {
 
 type PodRow struct {
 	*DateTimes
-	Node                          string
-	Namespace                     string
-	Pod                           string
-	PodUsageCPUCoreSeconds        string `json:"pod-usage-cpu-core-seconds"`
-	PodRequestCPUCoreSeconds      string `json:"pod-request-cpu-core-seconds"`
-	PodLimitCPUCoreSeconds        string `json:"pod-limit-cpu-core-seconds"`
-	PodUsageMemoryByteSeconds     string `json:"pod-usage-memory-byte-seconds"`
-	PodRequestMemoryByteSeconds   string `json:"pod-request-memory-byte-seconds"`
-	PodLimitMemoryByteSeconds     string `json:"pod-limit-memory-byte-seconds"`
-	NodeCapacityCPUCores          string `json:"node-capacity-cpu-cores"`
-	ModeCapacityCPUCoreSeconds    string `json:"node-capacity-cpu-core-seconds"`
-	NodeCapacityMemoryBytes       string `json:"node-capacity-memory-bytes"`
-	NodeCapacityMemoryByteSeconds string `json:"node-capacity-memory-byte-seconds"`
-	ResourceID                    string `json:"resource_id"`
-	PodLabels                     string `json:"pod_labels"`
+	NodeRow
+	Namespace                   string `json:"namespace"`
+	Pod                         string `json:"pod"`
+	PodUsageCPUCoreSeconds      string `json:"pod-usage-cpu-core-seconds"`
+	PodRequestCPUCoreSeconds    string `json:"pod-request-cpu-core-seconds"`
+	PodLimitCPUCoreSeconds      string `json:"pod-limit-cpu-core-seconds"`
+	PodUsageMemoryByteSeconds   string `json:"pod-usage-memory-byte-seconds"`
+	PodRequestMemoryByteSeconds string `json:"pod-request-memory-byte-seconds"`
+	PodLimitMemoryByteSeconds   string `json:"pod-limit-memory-byte-seconds"`
+	PodLabels                   string `json:"pod_labels"`
 }
 
 func NewPodRow(ts promv1.Range) PodRow {
@@ -245,7 +259,7 @@ type StorageRow struct {
 	Namespace                                string
 	Pod                                      string
 	PersistentVolumeClaim                    string `json:"persistentvolumeclaim"`
-	PersistentVolume                         string `json:"persistentvolume"`
+	PersistentVolume                         string `json:"volumename"`
 	StorageClass                             string `json:"storageclass"`
 	PersistentVolumeClaimCapacityBytes       string `json:"persistentvolumeclaim-capacity-bytes"`
 	PersistentVolumeClaimCapacityByteSeconds string `json:"persistentvolumeclaim-capacity-byte-seconds"`

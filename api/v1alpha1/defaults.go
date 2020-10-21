@@ -23,9 +23,27 @@ const (
 	// DefaultAuthenticationType The default authencation type.
 	DefaultAuthenticationType AuthenticationType = Token
 
-	// DefaultIngressURL The default ingress url.
-	DefaultIngressURL string = "https://cloud.redhat.com/api/ingress/v1/upload"
+	// DefaultAPIURL The default ingress path.
+	DefaultAPIURL string = "https://cloud.redhat.com"
+
+	// DefaultIngressPath The default ingress path.
+	DefaultIngressPath string = "/api/ingress/v1/upload"
+
+	// DefaultSourcesPath The default ingress path.
+	DefaultSourcesPath string = "/api/sources/v1.0/"
+
+	// DefaultPrometheusSvcAddress The default address to thanos-querier.
+	DefaultPrometheusSvcAddress string = "https://thanos-querier.openshift-monitoring.svc:9091"
 
 	// DefaultValidateCert The default cert validation setting
 	DefaultValidateCert bool = CertIgnore
+
+	//DefaultUploadToggle The default upload toggle
+	DefaultUploadToggle bool = UploadOn
+
+	//DefaultUploadCycle The default upload cycle
+	DefaultUploadCycle int64 = UploadSchedule
+
+	//DefaultSourceCheckCycle The default source check cycle
+	DefaultSourceCheckCycle int64 = SourceCheckSchedule
 )

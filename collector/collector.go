@@ -33,6 +33,10 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+<<<<<<< HEAD
+=======
+	costmgmtv1alpha1 "github.com/project-koku/korekuta-operator-go/api/v1alpha1"
+>>>>>>> master
 	"github.com/project-koku/korekuta-operator-go/strset"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -47,6 +51,7 @@ var (
 	nodeFilePrefix      = "cm-openshift-node-labels-lookback-"
 	namespaceFilePrefix = "cm-openshift-namespace-labels-lookback-"
 
+<<<<<<< HEAD
 	nodeQueries = mappedQuery{
 		"node-allocatable-cpu-cores":    "kube_node_status_allocatable_cpu_cores * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
 		"node-allocatable-memory-bytes": "kube_node_status_allocatable_memory_bytes * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
@@ -74,6 +79,9 @@ var (
 		"persistentvolumeclaim-labels": {"persistentvolumeclaim", "kube_persistentvolumeclaim_labels"},
 		"pod-labels":                   {"pod", "kube_pod_labels"},
 	}
+=======
+	statusTimeFormat = "2006-01-02 15:04:05"
+>>>>>>> master
 )
 
 type mappedCSVStruct map[string]CSVStruct
@@ -110,52 +118,63 @@ func sumSlice(array []model.SamplePair) float64 {
 	return float64(sum)
 }
 
-func getValue(query string, array []model.SamplePair) float64 {
-	switch {
-	case strings.Contains(query, "usage"), strings.Contains(query, "limit"), strings.Contains(query, "request"):
+func getValue(query *SaveQueryValue, array []model.SamplePair) float64 {
+	switch query.Method {
+	case "sum":
 		return sumSlice(array)
-	default:
+	case "max":
 		return maxSlice(array)
+	default:
+		return 0
 	}
 }
 
-func iterateMatrix(matrix model.Matrix, labelName model.LabelName, results mappedResults, qname string) mappedResults {
+func iterateMatrix(matrix model.Matrix, q Query, results mappedResults) mappedResults {
 	for _, stream := range matrix {
-		obj := string(stream.Metric[labelName])
+		obj := string(stream.Metric[q.RowKey])
 		if results[obj] == nil {
 			results[obj] = mappedValues{}
 		}
-		for labelName, labelValue := range stream.Metric {
-			results[obj][string(labelName)] = string(labelValue)
+		if q.MetricKey != nil {
+			for i, field := range q.MetricKey.MetricLabel {
+				index := string(field)
+				if len(q.MetricKey.LabelMap) > 0 {
+					index = q.MetricKey.LabelMap[i]
+				}
+				results[obj][index] = string(stream.Metric[field])
+			}
 		}
-		value := getValue(qname, stream.Values)
-		results[obj][qname] = floatToString(value)
-		if strings.HasSuffix(qname, "-cores") || strings.HasSuffix(qname, "-bytes") {
-			index := qname[:len(qname)-1] + "-seconds"
-			results[obj][index] = floatToString(value * float64(len(stream.Values)))
+		if q.MetricKeyRegex != nil {
+			for i, field := range q.MetricKeyRegex.LabelMap {
+				results[obj][field] = parseFields(stream.Metric, q.MetricKeyRegex.MetricRegex[i])
+			}
 		}
-		if strings.Contains(qname, "capacity") {
-			index := qname[:len(qname)-1] + "-seconds"
-			results[obj][index] = floatToString(value * 60 * float64(len(stream.Values)))
+		if q.QueryValue != nil {
+			saveStruct := q.QueryValue
+			value := getValue(saveStruct, stream.Values)
+			results[obj][saveStruct.ValName] = floatToString(value)
+			if saveStruct.TransformedName != "" {
+				results[obj][saveStruct.TransformedName] = floatToString(value * float64(len(stream.Values)*saveStruct.Factor))
+			}
 		}
 	}
 	return results
 }
 
-func getQueryResults(q collector, queries mappedQuery, key string) (mappedResults, error) {
+func getQueryResults(q collector, queries Querys) (mappedResults, error) {
 	results := mappedResults{}
-	for qname, query := range queries {
-		matrix, err := performMatrixQuery(q, query)
+	for _, query := range queries {
+		matrix, err := performMatrixQuery(q, query.QueryString)
 		if err != nil {
 			return nil, err
 		}
-		results = iterateMatrix(matrix, model.LabelName(key), results, qname)
+		results = iterateMatrix(matrix, query, results)
 	}
 	return results, nil
 }
 
 // GenerateReports is responsible for querying prometheus and writing to report files
-func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) error {
+func GenerateReports(cost *costmgmtv1alpha1.CostManagement, promconn promv1.API, ts promv1.Range, log logr.Logger) error {
 	if logger == nil {
 		logger = log
 	}
@@ -172,15 +191,18 @@ func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) erro
 
 	// yearMonth is used in filenames
 	yearMonth := ts.Start.Format("200601") // this corresponds to YYYYMM format
+	updateReportStatus(cost, ts)
 
 	log.Info("querying for node metrics")
-	nodeResults, err := getQueryResults(querier, nodeQueries, "node")
+	nodeResults, err := getQueryResults(querier, nodeQueries)
 	if err != nil {
 		return err
 	}
 
 	if len(nodeResults) <= 0 {
 		log.Info("no data to report")
+		cost.Status.Reports.DataCollected = false
+		cost.Status.Reports.DataCollectionMessage = "No data to report for the hour queried."
 		// there is no data for the hour queried. Return nothing
 		return nil
 	}
@@ -190,89 +212,25 @@ func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) erro
 	}
 
 	log.Info("querying for pod metrics")
-	podResults, err := getQueryResults(querier, podQueries, "pod")
+	podResults, err := getQueryResults(querier, podQueries)
 	if err != nil {
 		return err
 	}
 
 	log.Info("querying for storage metrics")
-	volResults, err := getQueryResults(querier, volQueries, "persistentvolumeclaim")
+	volResults, err := getQueryResults(querier, volQueries)
 	if err != nil {
 		return err
 	}
 
-	log.Info("querying for labels")
-	var labelResults = map[string]mappedResults{}
-	for _, labelQuery := range labelQueries {
-		label, query := labelQuery[0], labelQuery[1]
-		if labelResults[label] == nil {
-			labelResults[label] = mappedResults{}
-		}
-		results := labelResults[label]
-		vector, err := performTheQuery(querier, query)
-		if err != nil {
-			return err
-		}
-		for _, val := range vector {
-			label := string(val.Metric[model.LabelName(label)])
-			labels := parseLabels(val.Metric)
-			if results[label] == nil {
-				results[label] = mappedValues{}
-			}
-			for labelName, val := range val.Metric {
-				results[label][string(labelName)] = string(val)
-			}
-			results[label]["labels"] = labels
-		}
-	}
-
-	podRows := make(mappedCSVStruct)
-	for pod, val := range podResults {
-		if node, ok := val["node"]; ok {
-			// add the node queries into the pod results
-			node := node.(string)
-			dict, ok := nodeResults[string(node)]
-			if !ok {
-				return fmt.Errorf("node %s not found", node)
-			}
-			val["node-capacity-cpu-cores"] = dict["node-capacity-cpu-cores"]
-			val["node-capacity-cpu-core-seconds"] = dict["node-capacity-cpu-core-seconds"]
-			val["node-capacity-memory-bytes"] = dict["node-capacity-memory-bytes"]
-			val["node-capacity-memory-byte-seconds"] = dict["node-capacity-memory-byte-seconds"]
-			val["resource_id"] = dict["resource_id"]
-		}
-
-		val["pod_labels"] = labelResults["pod"][pod]["labels"]
-
-		usage := NewPodRow(ts)
-		if err := getStruct(val, &usage, podRows, pod); err != nil {
-			return err
-		}
-	}
-	if err := writeResults(podFilePrefix, yearMonth, "pod", podRows); err != nil {
-		return err
-	}
-
-	volRows := make(mappedCSVStruct)
-	for pvc, val := range volResults {
-		pv := val["volumename"].(string)
-		val["persistentvolume"] = pv
-		val["persistentvolume_labels"] = labelResults["persistentvolume"][pv]["labels"]
-		val["persistentvolumeclaim_labels"] = labelResults["persistentvolumeclaim"][pvc]["labels"]
-
-		usage := NewStorageRow(ts)
-		if err := getStruct(val, &usage, volRows, pvc); err != nil {
-			return err
-		}
-	}
-	if err := writeResults(volFilePrefix, yearMonth, "volume", volRows); err != nil {
+	log.Info("querying for namespaces")
+	namespaceResults, err := getQueryResults(querier, namespaceQueries)
+	if err != nil {
 		return err
 	}
 
 	nodeRows := make(mappedCSVStruct)
 	for node, val := range nodeResults {
-		val["node_labels"] = labelResults["node"][node]["labels"]
-
 		usage := NewNodeRow(ts)
 		if err := getStruct(val, &usage, nodeRows, node); err != nil {
 			return err
@@ -282,11 +240,38 @@ func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) erro
 		return err
 	}
 
-	namespaceRows := make(mappedCSVStruct)
-	namespaces := labelResults["namespace"]
-	for namespace, val := range namespaces {
-		val["namespace_labels"] = namespaces[namespace]["labels"]
+	podRows := make(mappedCSVStruct)
+	for pod, val := range podResults {
+		usage := NewPodRow(ts)
+		if err := getStruct(val, &usage, podRows, pod); err != nil {
+			return err
+		}
+		if node, ok := val["node"]; ok {
+			// Add the Node usage to the pod.
+			if row, ok := nodeRows[node.(string)]; ok {
+				usage.NodeRow = *row.(*NodeRow)
+			} else {
+				usage.NodeRow = NewNodeRow(ts)
+			}
+		}
+	}
+	if err := writeResults(podFilePrefix, yearMonth, "pod", podRows); err != nil {
+		return err
+	}
 
+	volRows := make(mappedCSVStruct)
+	for pvc, val := range volResults {
+		usage := NewStorageRow(ts)
+		if err := getStruct(val, &usage, volRows, pvc); err != nil {
+			return err
+		}
+	}
+	if err := writeResults(volFilePrefix, yearMonth, "volume", volRows); err != nil {
+		return err
+	}
+
+	namespaceRows := make(mappedCSVStruct)
+	for namespace, val := range namespaceResults {
 		usage := NewNamespaceRow(ts)
 		if err := getStruct(val, &usage, namespaceRows, namespace); err != nil {
 			return err
@@ -296,6 +281,9 @@ func GenerateReports(promconn promv1.API, ts promv1.Range, log logr.Logger) erro
 		return err
 	}
 
+	cost.Status.Reports.DataCollected = true
+	cost.Status.Reports.DataCollectionMessage = ""
+
 	return nil
 }
 
@@ -304,11 +292,11 @@ func getResourceID(input string) string {
 	return splitString[len(splitString)-1]
 }
 
-func parseLabels(input model.Metric) string {
+func parseFields(input model.Metric, str string) string {
 	result := []string{}
 	for name, val := range input {
 		name := string(name)
-		match, _ := regexp.MatchString("label_*", name)
+		match, _ := regexp.MatchString(str, name)
 		if match {
 			result = append(result, name+":"+string(val))
 		}
@@ -403,4 +391,9 @@ func readCsv(f *os.File, set *strset.Set) (*strset.Set, error) {
 		set.Add(strings.Join(line, ","))
 	}
 	return set, nil
+}
+
+func updateReportStatus(cost *costmgmtv1alpha1.CostManagement, ts promv1.Range) {
+	cost.Status.Reports.ReportMonth = ts.Start.Format("01")
+	cost.Status.Reports.LastHourQueried = ts.Start.Format(statusTimeFormat) + " - " + ts.End.Format(statusTimeFormat)
 }

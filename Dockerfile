@@ -15,7 +15,9 @@ COPY api/ api/
 COPY clusterversion/ clusterversion/
 COPY collector/ collector/
 COPY controllers/ controllers/
+COPY crhchttp/ crhchttp/
 COPY strset/ strset/
+COPY sources/ sources/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
@@ -29,6 +31,9 @@ RUN git --git-dir=/workspace/.git --work-tree=/workspace/ rev-parse HEAD > /work
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 # FROM gcr.io/distroless/static:nonroot
 FROM alpine:3.12
+
+# For terminal access, use this image:
+# FROM gcr.io/distroless/base:debug
 
 WORKDIR /
 COPY --from=builder /workspace/manager .
