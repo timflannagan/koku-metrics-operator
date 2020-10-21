@@ -125,7 +125,7 @@ func getBearerToken(ctx context.Context, r client.Client, cfg *PrometheusConfig)
 
 }
 
-func getPrometheusConfig(ctx context.Context, r client.Client, cost *costmgmtv1alpha1.CostManagement, log logr.Logger) (*PrometheusConfig, error) {
+func getPrometheusConfig(ctx context.Context, r client.Client, cost *costmgmtv1alpha1.CostManagementNEW, log logr.Logger) (*PrometheusConfig, error) {
 	cfg := &PrometheusConfig{
 		CAFile:  certFile,
 		Address: cost.Status.Prometheus.SvcAddress,
@@ -137,7 +137,7 @@ func getPrometheusConfig(ctx context.Context, r client.Client, cost *costmgmtv1a
 	return cfg, nil
 }
 
-func statusHelper(cost *costmgmtv1alpha1.CostManagement, status string, err error) {
+func statusHelper(cost *costmgmtv1alpha1.CostManagementNEW, status string, err error) {
 	switch status {
 	case "configuration":
 		if err != nil {
@@ -158,7 +158,7 @@ func statusHelper(cost *costmgmtv1alpha1.CostManagement, status string, err erro
 	}
 }
 
-func GetPromConn(ctx context.Context, r client.Client, cost *costmgmtv1alpha1.CostManagement, log logr.Logger) (prom.API, error) {
+func GetPromConn(ctx context.Context, r client.Client, cost *costmgmtv1alpha1.CostManagementNEW, log logr.Logger) (prom.API, error) {
 	log = log.WithValues("costmanagement", "GetPromConn")
 	cfg, err := getPrometheusConfig(ctx, r, cost, log)
 	statusHelper(cost, "configuration", err)

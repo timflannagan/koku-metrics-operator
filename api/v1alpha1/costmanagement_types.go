@@ -333,9 +333,6 @@ type CostManagementStatus struct {
 	// Reports represents the status of report generation
 	Reports ReportsStatus `json:"reports,omitempty"`
 
-	// Prometheus represents the status of premetheus queries
-	Prometheus PrometheusQueryStatus `json:"prometheus,omitempty"`
-
 	// Source is a field of CostManagement to represent the observed state of the source on cloud.redhat.com.
 	// +optional
 	Source CloudDotRedHatSourceStatus `json:"source,omitempty"`

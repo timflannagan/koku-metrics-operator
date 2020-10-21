@@ -33,10 +33,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-<<<<<<< HEAD
-=======
 	costmgmtv1alpha1 "github.com/project-koku/korekuta-operator-go/api/v1alpha1"
->>>>>>> master
 	"github.com/project-koku/korekuta-operator-go/strset"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -51,37 +48,7 @@ var (
 	nodeFilePrefix      = "cm-openshift-node-labels-lookback-"
 	namespaceFilePrefix = "cm-openshift-namespace-labels-lookback-"
 
-<<<<<<< HEAD
-	nodeQueries = mappedQuery{
-		"node-allocatable-cpu-cores":    "kube_node_status_allocatable_cpu_cores * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
-		"node-allocatable-memory-bytes": "kube_node_status_allocatable_memory_bytes * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
-		"node-capacity-cpu-cores":       "kube_node_status_capacity_cpu_cores * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
-		"node-capacity-memory-bytes":    "kube_node_status_capacity_memory_bytes * on(node) group_left(provider_id) max(kube_node_info) by (node, provider_id)",
-	}
-	volQueries = mappedQuery{
-		"persistentvolumeclaim-info":           "kube_persistentvolumeclaim_info",
-		"persistentvolumeclaim-capacity-bytes": "kubelet_volume_stats_capacity_bytes",
-		"persistentvolumeclaim-request-bytes":  "kube_persistentvolumeclaim_resource_requests_storage_bytes",
-		"persistentvolumeclaim-usage-bytes":    "kubelet_volume_stats_used_bytes",
-	}
-	podQueries = mappedQuery{
-		"pod-limit-cpu-cores":      "sum(kube_pod_container_resource_limits_cpu_cores) by (pod, namespace, node)",
-		"pod-limit-memory-bytes":   "sum(kube_pod_container_resource_limits_memory_bytes) by (pod, namespace, node)",
-		"pod-request-cpu-cores":    "sum(kube_pod_container_resource_requests_cpu_cores) by (pod, namespace, node)",
-		"pod-request-memory-bytes": "sum(kube_pod_container_resource_requests_memory_bytes) by (pod, namespace, node)",
-		"pod-usage-cpu-cores":      "sum(rate(container_cpu_usage_seconds_total{container!='POD',container!='',pod!=''}[5m])) BY (pod, namespace, node)",
-		"pod-usage-memory-bytes":   "sum(container_memory_usage_bytes{container!='POD', container!='',pod!=''}) by (pod, namespace, node)",
-	}
-	labelQueries = map[string][]string{
-		"namespace-labels":             {"namespace", "kube_namespace_labels"},
-		"node-labels":                  {"node", "kube_node_labels"},
-		"persistentvolume-labels":      {"persistentvolume", "kube_persistentvolume_labels"},
-		"persistentvolumeclaim-labels": {"persistentvolumeclaim", "kube_persistentvolumeclaim_labels"},
-		"pod-labels":                   {"pod", "kube_pod_labels"},
-	}
-=======
 	statusTimeFormat = "2006-01-02 15:04:05"
->>>>>>> master
 )
 
 type mappedCSVStruct map[string]CSVStruct
@@ -174,7 +141,7 @@ func getQueryResults(q collector, queries Querys) (mappedResults, error) {
 }
 
 // GenerateReports is responsible for querying prometheus and writing to report files
-func GenerateReports(cost *costmgmtv1alpha1.CostManagement, promconn promv1.API, ts promv1.Range, log logr.Logger) error {
+func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.API, ts promv1.Range, log logr.Logger) error {
 	if logger == nil {
 		logger = log
 	}
@@ -393,7 +360,7 @@ func readCsv(f *os.File, set *strset.Set) (*strset.Set, error) {
 	return set, nil
 }
 
-func updateReportStatus(cost *costmgmtv1alpha1.CostManagement, ts promv1.Range) {
+func updateReportStatus(cost *costmgmtv1alpha1.CostManagementNEW, ts promv1.Range) {
 	cost.Status.Reports.ReportMonth = ts.Start.Format("01")
 	cost.Status.Reports.LastHourQueried = ts.Start.Format(statusTimeFormat) + " - " + ts.End.Format(statusTimeFormat)
 }

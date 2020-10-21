@@ -75,7 +75,7 @@ type serializedAuth struct {
 }
 
 // StringReflectSpec Determine if the string Status item reflects the Spec item if not empty, otherwise take the default value.
-func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, specItem *string, statusItem *string, defaultVal string) (string, bool) {
+func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, specItem *string, statusItem *string, defaultVal string) (string, bool) {
 	// Update statusItem if needed
 	changed := false
 	if *statusItem == "" || !reflect.DeepEqual(*specItem, *statusItem) {
@@ -93,7 +93,7 @@ func StringReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostM
 }
 
 // ReflectSpec Determine if the Status item reflects the Spec item if not empty, otherwise set a default value if applicable.
-func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, costConfig *crhchttp.CostManagementConfig) error {
+func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, costConfig *crhchttp.CostManagementConfig) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("costmanagement", "ReflectSpec")
 	costConfig.APIURL, _ = StringReflectSpec(r, cost, &cost.Spec.APIURL, &cost.Status.APIURL, costmgmtv1alpha1.DefaultAPIURL)
@@ -178,7 +178,7 @@ func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagem
 		cost.Status.Prometheus.SkipTLSVerification = pointer.Bool(false)
 	}
 
-	costInput.LastQuerySuccessTime = cost.Status.Prometheus.LastQuerySuccessTime
+	costConfig.LastQuerySuccessTime = cost.Status.Prometheus.LastQuerySuccessTime
 
 	err := r.Status().Update(ctx, cost)
 	if err != nil {
@@ -189,7 +189,7 @@ func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagem
 }
 
 // GetClusterID Collects the cluster identifier from the Cluster Version custom resource object
-func GetClusterID(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagement, costConfig *crhchttp.CostManagementConfig) error {
+func GetClusterID(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagementNEW, costConfig *crhchttp.CostManagementConfig) error {
 	ctx := context.Background()
 	log := r.Log.WithValues("costmanagement", "GetClusterID")
 	// Get current ClusterVersion
@@ -534,42 +534,6 @@ func (r *CostManagementReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	}
 	if err := r.Status().Update(ctx, cost); err != nil {
 		log.Error(err, "failed to update CostManagement Status")
-	}
-
-	promConn, err := collector.GetPromConn(ctx, r.Client, r.Log)
-	if err != nil {
-		log.Error(err, "failed to get prometheus connection")
-		cost.Status.Prometheus.PrometheusConnected = pointer.Bool(false)
-		costInput.PrometheusConnected = *cost.Status.Prometheus.PrometheusConnected
-		if err := r.Status().Update(ctx, cost); err != nil {
-			log.Error(err, "failed to update CostManagement Status")
-		}
-	} else {
-		cost.Status.Prometheus.PrometheusConnected = pointer.Bool(true)
-		costInput.PrometheusConnected = *cost.Status.Prometheus.PrometheusConnected
-		t := metav1.Now()
-		timeRange := promv1.Range{
-			Start: time.Date(t.Year(), t.Month(), t.Day(), t.Hour()-1, 0, 0, 0, t.Location()),
-			End:   time.Date(t.Year(), t.Month(), t.Day(), t.Hour()-1, 59, 59, 0, t.Location()),
-			Step:  time.Minute,
-		}
-		if costInput.LastQuerySuccessTime.IsZero() || costInput.LastQuerySuccessTime.Hour() != t.Hour() {
-			cost.Status.Prometheus.LastQueryStartTime = t
-			log.Info("generatinging reports for range", "start", timeRange.Start, "end", timeRange.End)
-			err = collector.GenerateReports(promConn, timeRange, r.Log)
-			if err != nil {
-				log.Error(err, "failed to generate reports")
-			} else {
-				log.Info("reports generated for range", "start", timeRange.Start, "end", timeRange.End)
-				cost.Status.Prometheus.LastQuerySuccessTime = t
-			}
-		} else {
-			log.Info("reports already generated for range", "start", timeRange.Start, "end", timeRange.End)
-		}
-
-		if err := r.Status().Update(ctx, cost); err != nil {
-			log.Error(err, "failed to update CostManagement Status")
-		}
 	}
 
 	// Requeue for processing after 5 minutes
