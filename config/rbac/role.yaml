@@ -48,7 +48,7 @@ rules:
 - apiGroups:
   - cost-mgmt.openshift.io
   resources:
-  - costmanagementnews
+  - costmanagements
   verbs:
   - create
   - delete
@@ -60,7 +60,7 @@ rules:
 - apiGroups:
   - cost-mgmt.openshift.io
   resources:
-  - costmanagementnews/status
+  - costmanagements/status
   verbs:
   - get
   - patch
