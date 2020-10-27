@@ -28,6 +28,7 @@ import (
 	"math/rand"
 	"mime/multipart"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 	"time"
@@ -57,6 +58,8 @@ var (
 	pullSecretAuthKey        = "cloud.openshift.com"
 	authSecretUserKey        = "username"
 	authSecretPasswordKey    = "password"
+
+	queryDataDir = "data"
 )
 
 // CostManagementReconciler reconciles a CostManagement object
@@ -114,6 +117,8 @@ func ReflectSpec(r *CostManagementReconciler, cost *costmgmtv1alpha1.CostManagem
 	} else {
 		costConfig.ValidateCert = costmgmtv1alpha1.DefaultValidateCert
 	}
+
+	costConfig.FileDirectory, _ = StringReflectSpec(r, cost, &cost.Spec.FileDirectory, &cost.Status.FileDirectory, costmgmtv1alpha1.DefaultFileDirectory)
 
 	costConfig.IngressAPIPath, _ = StringReflectSpec(r, cost, &cost.Spec.Upload.IngressAPIPath, &cost.Status.Upload.IngressAPIPath, costmgmtv1alpha1.DefaultIngressPath)
 	cost.Status.Upload.UploadToggle = cost.Spec.Upload.UploadToggle
@@ -315,8 +320,28 @@ func checkCycle(logger logr.Logger, cycle int64, lastExecution metav1.Time, acti
 	}
 }
 
-// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagementnews,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagementnews/status,verbs=get;update;patch
+func setupDirectory(fileDir string) error {
+	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(fileDir, os.ModePerm); err != nil {
+			return fmt.Errorf("setupDirectory: %s: %v", fileDir, err)
+		}
+	}
+
+	dirs := []string{queryDataDir}
+	for _, dir := range dirs {
+		d := path.Join(fileDir, dir)
+		if _, err := os.Stat(d); os.IsNotExist(err) {
+			if err := os.MkdirAll(d, os.ModePerm); err != nil {
+				return fmt.Errorf("setupDirectory: %s: %v", d, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagements,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cost-mgmt.openshift.io,resources=costmanagements/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=config.openshift.io,resources=proxies;networks,verbs=get;list
 // +kubebuilder:rbac:groups=config.openshift.io,resources=clusterversions,verbs=get;list;watch
 // +kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews;tokenreviews,verbs=create
@@ -411,6 +436,22 @@ func (r *CostManagementReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		cost.Status.Source.SourceDefined = &defined
 		cost.Status.Source.SourceError = errMsg
 		cost.Status.Source.LastSourceCheckTime = lastCheck
+	}
+
+	if _, err := os.Stat(cost.Status.FileDirectory + queryDataDir); os.IsNotExist(err) { // this directory should always exist
+		cost.Status.FileDirectoryConfigured = pointer.Bool(false)
+	}
+
+	if cost.Status.FileDirectoryConfigured == nil || !*cost.Status.FileDirectoryConfigured {
+		if err := setupDirectory(cost.Status.FileDirectory); err != nil {
+			cost.Status.FileDirectoryConfigured = pointer.Bool(false)
+			log.Error(err, "Failed to set-up file directories.")
+			if err := r.Status().Update(ctx, cost); err != nil {
+				log.Error(err, "Failed to update CostManagement Status")
+			}
+		}
+		log.Info("Successfully set-up file directories.")
+		cost.Status.FileDirectoryConfigured = pointer.Bool(true)
 	}
 
 	if costConfig.UploadToggle {

@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -42,7 +43,7 @@ import (
 var (
 	logger logr.Logger
 
-	dataPath            = "/tmp/cost-mgmt-operator-reports/data/"
+	queryDataDir        = "data"
 	podFilePrefix       = "cm-openshift-usage-lookback-"
 	volFilePrefix       = "cm-openshift-persistentvolumeclaim-lookback-"
 	nodeFilePrefix      = "cm-openshift-node-labels-lookback-"
@@ -60,6 +61,13 @@ type collector struct {
 	PrometheusConnection promv1.API
 	TimeSeries           promv1.Range
 	Log                  logr.Logger
+}
+type Report struct {
+	filename    string
+	filePath    string
+	queryType   string
+	queryData   mappedCSVStruct
+	fileHeaders CSVStruct
 }
 
 func floatToString(inputNum float64) string {
@@ -158,6 +166,7 @@ func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.A
 
 	// yearMonth is used in filenames
 	yearMonth := ts.Start.Format("200601") // this corresponds to YYYYMM format
+	queryDataPath := path.Join(cost.Status.FileDirectory, queryDataDir)
 	updateReportStatus(cost, ts)
 
 	log.Info("querying for node metrics")
@@ -203,7 +212,14 @@ func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.A
 			return err
 		}
 	}
-	if err := writeResults(nodeFilePrefix, yearMonth, "node", nodeRows); err != nil {
+	nodeReport := Report{
+		filename:    nodeFilePrefix + yearMonth + ".csv",
+		filePath:    queryDataPath,
+		queryType:   "node",
+		queryData:   nodeRows,
+		fileHeaders: NewNodeRow(ts),
+	}
+	if err := writeReport(nodeReport); err != nil {
 		return err
 	}
 
@@ -222,7 +238,14 @@ func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.A
 			}
 		}
 	}
-	if err := writeResults(podFilePrefix, yearMonth, "pod", podRows); err != nil {
+	podReport := Report{
+		filename:    podFilePrefix + yearMonth + ".csv",
+		filePath:    queryDataPath,
+		queryType:   "pod",
+		queryData:   podRows,
+		fileHeaders: NewPodRow(ts),
+	}
+	if err := writeReport(podReport); err != nil {
 		return err
 	}
 
@@ -233,7 +256,14 @@ func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.A
 			return err
 		}
 	}
-	if err := writeResults(volFilePrefix, yearMonth, "volume", volRows); err != nil {
+	volReport := Report{
+		filename:    volFilePrefix + yearMonth + ".csv",
+		filePath:    queryDataPath,
+		queryType:   "volume",
+		queryData:   volRows,
+		fileHeaders: NewStorageRow(ts),
+	}
+	if err := writeReport(volReport); err != nil {
 		return err
 	}
 
@@ -244,7 +274,14 @@ func GenerateReports(cost *costmgmtv1alpha1.CostManagementNEW, promconn promv1.A
 			return err
 		}
 	}
-	if err := writeResults(namespaceFilePrefix, yearMonth, "namespace", namespaceRows); err != nil {
+	namespaceReport := Report{
+		filename:    namespaceFilePrefix + yearMonth + ".csv",
+		filePath:    queryDataPath,
+		queryType:   "namespace",
+		queryData:   namespaceRows,
+		fileHeaders: NewNamespaceRow(ts),
+	}
+	if err := writeReport(namespaceReport); err != nil {
 		return err
 	}
 
@@ -280,25 +317,25 @@ func parseFields(input model.Metric, str string) string {
 func getStruct(val mappedValues, usage CSVStruct, rowResults mappedCSVStruct, key string) error {
 	row, err := json.Marshal(val)
 	if err != nil {
-		return fmt.Errorf("failed to marshal pod row")
+		return fmt.Errorf("getStruct: failed to marshal row: %v", err)
 	}
 	if err := json.Unmarshal(row, &usage); err != nil {
-		return fmt.Errorf("failed to unmarshal pod row")
+		return fmt.Errorf("getStruct: failed to unmarshal row: %v", err)
 	}
 	rowResults[key] = usage
 	return nil
 }
 
-func writeResults(prefix, yearMonth, key string, data mappedCSVStruct) error {
-	csvFile, created, err := getOrCreateFile(dataPath, prefix+yearMonth+".csv")
+func writeReport(report Report) error {
+	csvFile, created, err := getOrCreateFile(report.filePath, report.filename)
 	if err != nil {
-		return fmt.Errorf("failed to get or create %s csv: %v", key, err)
+		return fmt.Errorf("failed to get or create %s csv: %v", report.queryType, err)
 	}
 	defer csvFile.Close()
-	logMsg := fmt.Sprintf("writing %s results to file", key)
-	logger.WithValues("costmanagement", "writeResults").Info(logMsg, "filename", csvFile.Name(), "data set", key)
-	if err := writeToFile(csvFile, data, created); err != nil {
-		return fmt.Errorf("failed to write file: %v", err)
+	logMsg := fmt.Sprintf("writing %s results to file", report.queryType)
+	logger.WithValues("costmanagement", "writeResults").Info(logMsg, "filename", csvFile.Name(), "data set", report.queryType)
+	if err := writeToFile(csvFile, report.queryData, report.fileHeaders, created); err != nil {
+		return fmt.Errorf("writeReport: %v", err)
 	}
 	return nil
 }
@@ -323,17 +360,14 @@ func getOrCreateFile(path, filename string) (*os.File, bool, error) {
 }
 
 // writeToFile compares the data to what is in the file and only adds new data to the file
-func writeToFile(file *os.File, data mappedCSVStruct, created bool) error {
+func writeToFile(file *os.File, data mappedCSVStruct, headers CSVStruct, created bool) error {
 	set, err := readCsv(file, strset.NewSet())
 	if err != nil {
-		return fmt.Errorf("failed to read csv: %v", err)
+		return fmt.Errorf("writeToFile: failed to read csv: %v", err)
 	}
 	if created {
-		for _, row := range data {
-			if err := row.CSVheader(file); err != nil {
-				return err
-			}
-			break // write the headers using the first element in map
+		if err := headers.CSVheader(file); err != nil {
+			return fmt.Errorf("writeToFile: %v", err)
 		}
 	}
 
