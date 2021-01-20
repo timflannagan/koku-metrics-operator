@@ -21,6 +21,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -134,6 +135,25 @@ type PackagingSpec struct {
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:default=100
 	MaxSize int64 `json:"max_size_MB"`
+
+	// MaxReports is a field of KokuMetricsConfig to represent the maximum number of reports to store.
+	// +kubebuilder:default=10
+	MaxReports int64 `json:"max_reports_to_keep"`
+}
+
+// StorageSpec defines the desired state of Storage object in the KokuMetricsConfigSpec.
+type StorageSpec struct {
+
+	// AutoExpandPVC is a field of KokuMetricsConfig to represent if the operator should automatically expand the PVC size.
+	// +kubebuilder:default=true
+	AutoExpandPVC *bool `json:"auto_expand_pvc"`
+
+	// ExpansionThreshold is a field of KokuMetricsConfig to represent the % space remaining in the PVC before re-sizing.
+	// +kubebuilder:default=10
+	ExpansionThreshold int64 `json:"expansion_threshold"`
+
+	// MaxClaimStorage is a field of KokuMetricsConfig to represent the maximum size of the expanded PVC.
+	MaxClaimStorage resource.Quantity `json:"max_claim_storage"`
 }
 
 // UploadSpec defines the desired state of Authentication object in the KokuMetricsConfigSpec.
@@ -260,14 +280,20 @@ type PackagingStatus struct {
 	// +nullable
 	LastSuccessfulPackagingTime metav1.Time `json:"last_successful_packaging_time,omitempty"`
 
+	// MaxReports is a field of KokuMetricsConfig to represent the maximum number of reports to store.
+	MaxReports *int64 `json:"max_reports_to_keep,omitempty"`
+
 	// MaxSize is a field of KokuMetricsConfig to represent the max file size in megabytes that will be compressed for upload to Ingress.
 	MaxSize *int64 `json:"max_size_MB,omitempty"`
 
 	// PackagedFiles is a field of KokuMetricsConfig to represent the list of file packages in storage.
 	PackagedFiles []string `json:"packaged_files,omitempty"`
 
-	// PackagingError is a field of KokuMetricsConfigStatus to represent the error encountered packaging the reports.
+	// PackagingError is a field of KokuMetricsConfig to represent the error encountered packaging the reports.
 	PackagingError string `json:"error,omitempty"`
+
+	// ReportCount is a field of KokuMetricsConfig to represent the number of reports in storage.
+	ReportCount *int64 `json:"number_reports_stored,omitempty"`
 }
 
 // UploadStatus defines the observed state of Upload object in the KokuMetricsConfigStatus.
@@ -387,6 +413,18 @@ type ReportsStatus struct {
 
 // StorageStatus defines the status for storage.
 type StorageStatus struct {
+
+	// AutoExpandPVC is a field of KokuMetricsConfig to represent if the operator should automatically expand the PVC size.
+	AutoExpandPVC *bool `json:"auto_expand_pvc,omitempty"`
+
+	// ExpansionThreshold is a field of KokuMetricsConfig to represent the % space remaining in the PVC before re-sizing.
+	ExpansionThreshold int64 `json:"expansion_threshold,omitempty"`
+
+	// FreeSpace is a field of KokuMetricsConfig to represent the % space remaining in the PVC.
+	FreeSpace int64 `json:"free_space,omitempty"`
+
+	// MaxClaimStorage is a field of KokuMetricsConfig to represent the maximum size of the expanded PVC.
+	MaxClaimStorage resource.Quantity `json:"max_claim_storage,omitempty"`
 
 	// VolumeType is the string representation of the volume type.
 	VolumeType string `json:"volume_type,omitempty"`

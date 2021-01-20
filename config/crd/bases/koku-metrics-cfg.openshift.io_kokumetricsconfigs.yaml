@@ -74,6 +74,12 @@ spec:
                 description: Packaging is a field of KokuMetricsConfig to represent
                   the packaging object.
                 properties:
+                  max_reports_to_keep:
+                    default: 10
+                    description: MaxReports is a field of KokuMetricsConfig to represent
+                      the maximum number of reports to store.
+                    format: int64
+                    type: integer
                   max_size_MB:
                     default: 100
                     description: MaxSize is a field of KokuMetricsConfig to represent
@@ -84,6 +90,7 @@ spec:
                     minimum: 1
                     type: integer
                 required:
+                - max_reports_to_keep
                 - max_size_MB
                 type: object
               prometheus_config:
@@ -401,8 +408,8 @@ spec:
                   the packaging status
                 properties:
                   error:
-                    description: PackagingError is a field of KokuMetricsConfigStatus
-                      to represent the error encountered packaging the reports.
+                    description: PackagingError is a field of KokuMetricsConfig to
+                      represent the error encountered packaging the reports.
                     type: string
                   last_successful_packaging_time:
                     description: LastSuccessfulPackagingTime is a field of KokuMetricsConfig
@@ -410,10 +417,20 @@ spec:
                     format: date-time
                     nullable: true
                     type: string
+                  max_reports_to_keep:
+                    description: MaxReports is a field of KokuMetricsConfig to represent
+                      the maximum number of reports to store.
+                    format: int64
+                    type: integer
                   max_size_MB:
                     description: MaxSize is a field of KokuMetricsConfig to represent
                       the max file size in megabytes that will be compressed for upload
                       to Ingress.
+                    format: int64
+                    type: integer
+                  number_reports_stored:
+                    description: ReportCount is a field of KokuMetricsConfig to represent
+                      the number of reports in storage.
                     format: int64
                     type: integer
                   packaged_files:
@@ -527,6 +544,29 @@ spec:
               storage:
                 description: Storage is a field
                 properties:
+                  auto_expand_pvc:
+                    description: AutoExpandPVC is a field of KokuMetricsConfig to
+                      represent if the operator should automatically expand the PVC
+                      size.
+                    type: boolean
+                  expansion_threshold:
+                    description: ExpansionThreshold is a field of KokuMetricsConfig
+                      to represent the % space remaining in the PVC before re-sizing.
+                    format: int64
+                    type: integer
+                  free_space:
+                    description: FreeSpace is a field of KokuMetricsConfig to represent
+                      the % space remaining in the PVC.
+                    format: int64
+                    type: integer
+                  max_claim_storage:
+                    anyOf:
+                    - type: integer
+                    - type: string
+                    description: MaxClaimStorage is a field of KokuMetricsConfig to
+                      represent the maximum size of the expanded PVC.
+                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    x-kubernetes-int-or-string: true
                   persistent_volume_claim:
                     description: PersistentVolumeClaim is a field of KokuMetricsConfig
                       to represent a PVC.
