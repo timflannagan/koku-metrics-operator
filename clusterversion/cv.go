@@ -10,6 +10,7 @@ import (
 
 	configv1 "github.com/openshift/api/config/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -42,6 +43,17 @@ func (cvb *clusterVersionClientBuilder) New(c client.Client) ClusterVersion {
 
 // GetClusterVersion gets the ClusterVersion CR
 func (c *clusterVersionClient) GetClusterVersion() (*configv1.ClusterVersion, error) {
+	gvr := schema.GroupKind{
+		Group: "config.openshift.io",
+		Kind:  "clusterversion",
+	}
+	if _, err := c.client.RESTMapper().RESTMapping(gvr); err != nil {
+		if meta.IsNoMatchError(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
 	cvList := &configv1.ClusterVersionList{}
 	err := c.client.List(context.TODO(), cvList)
 	if err != nil {

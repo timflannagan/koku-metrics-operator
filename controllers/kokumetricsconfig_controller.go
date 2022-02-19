@@ -174,6 +174,12 @@ func GetClusterID(r *KokuMetricsConfigReconciler, kmCfg *kokumetricscfgv1beta1.K
 	if err != nil {
 		return err
 	}
+	if clusterVersion == nil {
+		kmCfg.Status.ClusterID = "upstream-k8s"
+		kmCfg.Status.ClusterVersion = "upstream-k8s"
+		return nil
+	}
+
 	log.Info("cluster version found", "ClusterVersion", clusterVersion.Spec)
 	if clusterVersion.Spec.ClusterID != "" {
 		kmCfg.Status.ClusterID = string(clusterVersion.Spec.ClusterID)
